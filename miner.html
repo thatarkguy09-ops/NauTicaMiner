@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nauticacoin Miner (Persistent)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: #1a1a2e;
+            color: #eee;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: #16213e;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        h1 {
+            text-align: center;
+            color: #f0a500;
+            margin-top: 0;
+            border-bottom: 2px solid #f0a500;
+            padding-bottom: 10px;
+        }
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 15px 0;
+            align-items: center;
+        }
+        .label {
+            font-weight: bold;
+            min-width: 120px;
+            color: #aaa;
+        }
+        input[type="text"], input[type="number"] {
+            background: #0f3460;
+            border: 1px solid #533483;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            flex: 1;
+            min-width: 80px;
+        }
+        input[type="text"]:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #f0a500;
+        }
+        button {
+            background: #f0a500;
+            color: #1a1a2e;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+            transition: 0.2s;
+        }
+        button:hover {
+            background: #e69500;
+            transform: scale(1.02);
+        }
+        button:disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .status-area {
+            background: #0f3460;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #533483;
+        }
+        .chain-area {
+            margin-top: 20px;
+            border-top: 2px solid #533483;
+            padding-top: 15px;
+        }
+        .chain-area h3 {
+            color: #f0a500;
+            margin: 0 0 10px 0;
+        }
+        .block-entry {
+            background: #1b3a4b;
+            border-left: 4px solid #4caf50;
+            padding: 8px 12px;
+            margin: 6px 0;
+            border-radius: 4px;
+            font-size: 13px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+        .block-entry .hash {
+            color: #8bc34a;
+            font-weight: bold;
+        }
+        .block-entry .ir-code {
+            background: #0f3460;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 11px;
+            word-break: break-all;
+            flex: 1;
+            min-width: 100px;
+        }
+        .stat {
+            display: inline-block;
+            margin-right: 20px;
+            font-size: 14px;
+        }
+        .stat span {
+            color: #f0a500;
+            font-weight: bold;
+        }
+        .serial-section {
+            margin-top: 20px;
+            border-top: 1px solid #533483;
+            padding-top: 15px;
+        }
+        .serial-section button {
+            background: #4caf50;
+        }
+        .serial-section button:hover {
+            background: #388e3c;
+        }
+        .warning {
+            color: #ffb74d;
+            font-size: 13px;
+            margin-top: 5px;
+        }
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #888;
+            margin-top: 20px;
+        }
+        .clear-btn {
+            background: #d32f2f;
+            margin-left: 15px;
+        }
+        .clear-btn:hover {
+            background: #b71c1c;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>⛏️ NAUTICACOIN MINER (Persistent)</h1>
+
+    <div class="row">
+        <span class="label">Miner ID (hex):</span>
+        <input type="text" id="minerId" value="C0" maxlength="2" style="max-width:60px;" />
+        <span class="label">Difficulty (hex):</span>
+        <input type="text" id="difficulty" value="3000" maxlength="4" style="max-width:80px;" />
+        <span class="label">Start TS:</span>
+        <input type="number" id="startTs" value="0" style="max-width:80px;" />
+        <button id="clearChainBtn" class="clear-btn">🗑 Clear Chain</button>
+    </div>
+
+    <div class="row">
+        <button id="startBtn">▶ Start Mining</button>
+        <button id="stopBtn" disabled>⏹ Stop</button>
+        <span style="margin-left:auto;">
+            <span class="stat">Chain: <span id="chainLengthDisplay">0</span> blocks</span>
+            <span class="stat">Hashes: <span id="hashCount">0</span></span>
+            <span class="stat">Speed: <span id="speed">0</span> H/s</span>
+        </span>
+    </div>
+
+    <div class="status-area" id="logArea">
+        <div style="color:#aaa;">Ready. Press "Start Mining".</div>
+    </div>
+
+    <div class="chain-area" id="chainArea">
+        <h3>📦 Mined Blocks</h3>
+        <div id="chainList"></div>
+    </div>
+
+    <div class="serial-section">
+        <button id="serialSendBtn" disabled>📡 Send Latest via WebSerial</button>
+        <span id="serialStatus" style="margin-left:15px;font-size:14px;color:#aaa;">Not connected</span>
+        <button id="serialConnectBtn" style="background:#2196f3;">Connect Serial</button>
+        <div class="warning">Requires a serial‑to‑IR converter (e.g., Arduino) listening for hex commands.</div>
+    </div>
+
+    <div class="footer">
+        All blocks are saved in browser localStorage. Reload to continue mining.
+    </div>
+</div>
+
+<script>
+    // ----------------------------------------------------------------------
+    // CONSTANTS & GLOBALS
+    // ----------------------------------------------------------------------
+    const SHARED_KEY = 0x5C;
+    const BLOCK_SIZE = 8;
+    const STORAGE_KEY = 'nauticacoin_chain';
+
+    // DOM refs
+    const logArea = document.getElementById('logArea');
+    const chainList = document.getElementById('chainList');
+    const chainLengthDisplay = document.getElementById('chainLengthDisplay');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const hashCountSpan = document.getElementById('hashCount');
+    const speedSpan = document.getElementById('speed');
+    const minerIdInput = document.getElementById('minerId');
+    const difficultyInput = document.getElementById('difficulty');
+    const startTsInput = document.getElementById('startTs');
+    const serialSendBtn = document.getElementById('serialSendBtn');
+    const serialConnectBtn = document.getElementById('serialConnectBtn');
+    const serialStatus = document.getElementById('serialStatus');
+    const clearChainBtn = document.getElementById('clearChainBtn');
+
+    // Mining state
+    let mining = false;
+    let hashCount = 0;
+    let startTime = 0;
+    let currentBlock = null;          // last found block (full byte array)
+    let lastFoundIndex = -1;          // index of last found block
+
+    // WebSerial
+    let serialPort = null;
+    let serialWriter = null;
+    let serialConnected = false;
+
+    // Chain state (loaded from localStorage)
+    let chain = [];                   // array of block objects
+    let chainLength = 0;
+    let lastHash = 0x8BC4;            // genesis hash
+
+    // ----------------------------------------------------------------------
+    // HASH FUNCTION (identical to Arduino)
+    // ----------------------------------------------------------------------
+    function computeBlockHash(block) {
+        let hash = 0x811C;
+        for (let i = 0; i < 6; i++) {
+            hash ^= block[i];
+            hash = (hash * 0x0101) & 0xFFFF;
+            hash = (hash + 0x0193) & 0xFFFF;
+        }
+        hash ^= 0x5A5A;
+        return hash & 0xFFFF;
+    }
+
+    // ----------------------------------------------------------------------
+    // STORAGE FUNCTIONS
+    // ----------------------------------------------------------------------
+    function loadChain() {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            try {
+                const data = JSON.parse(stored);
+                chain = data.chain || [];
+                chainLength = data.chainLength || 0;
+                lastHash = data.lastHash || 0x8BC4;
+                // Ensure chain length matches array length
+                if (chain.length !== chainLength) {
+                    chainLength = chain.length;
+                    lastHash = chainLength > 0 ? chain[chainLength-1].hash : 0x8BC4;
+                    saveChain();
+                }
+            } catch (e) {
+                chain = [];
+                chainLength = 0;
+                lastHash = 0x8BC4;
+                saveChain();
+            }
+        } else {
+            chain = [];
+            chainLength = 0;
+            lastHash = 0x8BC4;
+            saveChain();
+        }
+        updateChainDisplay();
+        updateChainLengthDisplay();
+    }
+
+    function saveChain() {
+        const data = {
+            chain: chain,
+            chainLength: chainLength,
+            lastHash: lastHash
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        updateChainDisplay();
+        updateChainLengthDisplay();
+    }
+
+    function clearChain() {
+        if (confirm('Delete all mined blocks from storage?')) {
+            chain = [];
+            chainLength = 0;
+            lastHash = 0x8BC4;
+            saveChain();
+            currentBlock = null;
+            lastFoundIndex = -1;
+            logMessage('🗑 Chain cleared.');
+        }
+    }
+
+    function addBlockToChain(blockData, hash, ts) {
+        const blockObj = {
+            index: blockData[0],
+            timestamp: ts,
+            txData: blockData[3],
+            prevHash: ((blockData[4] << 8) | blockData[5]),
+            hash: hash,
+            blockHex: Array.from(blockData).map(b => b.toString(16).padStart(2,'0')).join(' ')
+        };
+        chain.push(blockObj);
+        chainLength = chain.length;
+        lastHash = hash;
+        saveChain();
+        // update UI
+        updateChainDisplay();
+        updateChainLengthDisplay();
+        // store as current for serial
+        currentBlock = blockData;
+        lastFoundIndex = blockData[0];
+        serialSendBtn.disabled = !serialConnected;
+    }
+
+    // ----------------------------------------------------------------------
+    // UI UPDATE FUNCTIONS
+    // ----------------------------------------------------------------------
+    function updateChainDisplay() {
+        if (chain.length === 0) {
+            chainList.innerHTML = '<div style="color:#888;font-style:italic;">No blocks mined yet.</div>';
+            return;
+        }
+        let html = '';
+        // Show last 10 for readability, but you can show all
+        const display = chain;
+        for (let i = 0; i < display.length; i++) {
+            const b = display[i];
+            const irSeq = generateIRSequenceFromBlockObj(b);
+            html += `
+                <div class="block-entry">
+                    <strong>#${b.index}</strong>
+                    <span class="hash">0x${b.hash.toString(16).padStart(4,'0')}</span>
+                    <span>ts: ${b.timestamp}</span>
+                    <span>tx: 0x${b.txData.toString(16).padStart(2,'0')}</span>
+                    <span>prev: 0x${b.prevHash.toString(16).padStart(4,'0')}</span>
+                    <span class="ir-code">IR: ${irSeq}</span>
+                </div>
+            `;
+        }
+        chainList.innerHTML = html;
+        // scroll to bottom
+        chainList.scrollTop = chainList.scrollHeight;
+    }
+
+    function updateChainLengthDisplay() {
+        chainLengthDisplay.textContent = chainLength;
+    }
+
+    function logMessage(msg, isGood = false) {
+        const div = document.createElement('div');
+        div.textContent = msg;
+        if (isGood) div.style.color = '#4caf50';
+        logArea.appendChild(div);
+        logArea.scrollTop = logArea.scrollHeight;
+    }
+
+    function clearLog() {
+        logArea.innerHTML = '';
+    }
+
+    // ----------------------------------------------------------------------
+    // GENERATE IR SEQUENCE FROM BLOCK OBJECT OR BYTE ARRAY
+    // ----------------------------------------------------------------------
+    function generateIRSequenceFromBlockObj(blockObj) {
+        // Reconstruct byte array from object
+        const block = new Uint8Array(BLOCK_SIZE);
+        block[0] = blockObj.index & 0xFF;
+        block[1] = (blockObj.timestamp >> 8) & 0xFF;
+        block[2] = blockObj.timestamp & 0xFF;
+        block[3] = blockObj.txData & 0xFF;
+        block[4] = (blockObj.prevHash >> 8) & 0xFF;
+        block[5] = blockObj.prevHash & 0xFF;
+        block[6] = (blockObj.hash >> 8) & 0xFF;
+        block[7] = blockObj.hash & 0xFF;
+        return generateIRSequence(block);
+    }
+
+    function generateIRSequence(block) {
+        const minerId = parseInt(minerIdInput.value, 16);
+        if (isNaN(minerId) || minerId < 0 || minerId > 255) {
+            return 'Invalid Miner ID';
+        }
+        const header = (minerId << 24) | (0xB1 << 16) | 0x0000;
+        let parts = [`0x${header.toString(16).padStart(8,'0')}`];
+        for (let i = 0; i < BLOCK_SIZE; i += 2) {
+            const b1 = block[i] ^ SHARED_KEY ^ minerId;
+            const b2 = (i+1 < BLOCK_SIZE) ? (block[i+1] ^ SHARED_KEY ^ minerId) : 0;
+            const word = (b1 << 8) | b2;
+            parts.push(`0x${word.toString(16).padStart(8,'0')}`);
+        }
+        return parts.join(' ');
+    }
+
+    // ----------------------------------------------------------------------
+    // MINE A BLOCK (searches for timestamp nonce)
+    // ----------------------------------------------------------------------
+    function mineBlock(index, prevHash, startTs, difficultyTarget, txData = 0x00) {
+        const block = new Uint8Array(BLOCK_SIZE);
+        block[0] = index & 0xFF;
+        block[3] = txData & 0xFF;
+        block[4] = (prevHash >> 8) & 0xFF;
+        block[5] = prevHash & 0xFF;
+
+        let ts = startTs;
+        while (true) {
+            if (!mining) return null;  // stopped
+
+            block[1] = (ts >> 8) & 0xFF;
+            block[2] = ts & 0xFF;
+            const hash = computeBlockHash(block);
+            block[6] = (hash >> 8) & 0xFF;
+            block[7] = hash & 0xFF;
+
+            hashCount++;
+
+            if (hash < difficultyTarget) {
+                return { block, hash, ts };
+            }
+
+            ts++;
+            if (ts > 0xFFFF) ts = 0;
+        }
+    }
+
+    // ----------------------------------------------------------------------
+    // MINING LOOP (async)
+    // ----------------------------------------------------------------------
+    async function miningLoop() {
+        if (mining) return;
+        mining = true;
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        clearLog();
+
+        const minerId = parseInt(minerIdInput.value, 16);
+        if (isNaN(minerId) || minerId < 0 || minerId > 255) {
+            logMessage('❌ Invalid Miner ID (must be 0x00–0xFF).');
+            stopMining();
+            return;
+        }
+
+        const difficulty = parseInt(difficultyInput.value, 16);
+        if (isNaN(difficulty) || difficulty < 1 || difficulty > 0xFFFF) {
+            logMessage('❌ Invalid difficulty (must be 0x0001–0xFFFF).');
+            stopMining();
+            return;
+        }
+
+        let startTs = parseInt(startTsInput.value);
+        if (isNaN(startTs) || startTs < 0) startTs = 0;
+
+        // Resume from last block in chain
+        let blockIndex = chainLength; // because genesis is 0, next index = chainLength
+        let prevHash = lastHash;
+
+        // If chain is empty, start with index 1 (since genesis is 0)
+        if (chainLength === 0) {
+            blockIndex = 1;
+            prevHash = 0x8BC4; // genesis hash
+        }
+
+        logMessage(`⛏️ Starting miner (ID: 0x${minerId.toString(16).padStart(2,'0')}, diff: 0x${difficulty.toString(16).padStart(4,'0')})`);
+        logMessage(`Resuming from block #${blockIndex} with prevHash 0x${prevHash.toString(16).padStart(4,'0')}`);
+
+        hashCount = 0;
+        startTime = performance.now();
+
+        while (mining) {
+            const result = mineBlock(blockIndex, prevHash, startTs, difficulty, 0x00);
+            if (!result) break; // stopped
+
+            // Found a block!
+            const { block, hash, ts } = result;
+            const hashHex = hash.toString(16).padStart(4,'0').toUpperCase();
+            logMessage(`🎉 Block #${block[0]} found! Hash 0x${hashHex} at ts ${ts}`, true);
+
+            // Add to chain (persistent)
+            addBlockToChain(block, hash, ts);
+
+            // Prepare for next block
+            blockIndex++;
+            prevHash = hash;
+            startTs = ts + 1; // continue from next timestamp
+            // Optionally, we could delay a bit to let UI breathe
+            await new Promise(r => setTimeout(r, 10));
+        }
+
+        if (mining) {
+            logMessage('⏹ Mining stopped by user.');
+        }
+        mining = false;
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+    }
+
+    function stopMining() {
+        mining = false;
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+    }
+
+    // ----------------------------------------------------------------------
+    // WEBSERIAL
+    // ----------------------------------------------------------------------
+    async function connectSerial() {
+        try {
+            const port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 115200 });
+            serialPort = port;
+            serialWriter = port.writable.getWriter();
+            serialConnected = true;
+            serialStatus.textContent = '✅ Connected';
+            serialStatus.style.color = '#4caf50';
+            serialConnectBtn.textContent = 'Disconnect';
+            serialSendBtn.disabled = false;
+            logMessage('🔗 Serial connected.');
+        } catch (err) {
+            alert('Could not open serial port: ' + err.message);
+        }
+    }
+
+    async function disconnectSerial() {
+        if (serialWriter) {
+            try { await serialWriter.close(); } catch(e) {}
+            serialWriter = null;
+        }
+        if (serialPort) {
+            try { await serialPort.close(); } catch(e) {}
+            serialPort = null;
+        }
+        serialConnected = false;
+        serialStatus.textContent = '❌ Disconnected';
+        serialStatus.style.color = '#f44336';
+        serialConnectBtn.textContent = 'Connect Serial';
+        serialSendBtn.disabled = true;
+        logMessage('🔌 Serial disconnected.');
+    }
+
+    async function sendLatestBlock() {
+        if (!serialConnected || !serialWriter) {
+            alert('Serial not connected.');
+            return;
+        }
+        if (!currentBlock) {
+            alert('No block to send.');
+            return;
+        }
+        const minerId = parseInt(minerIdInput.value, 16);
+        if (isNaN(minerId) || minerId < 0 || minerId > 255) {
+            alert('Invalid Miner ID');
+            return;
+        }
+        // Build packet sequence
+        const header = (minerId << 24) | (0xB1 << 16) | 0x0000;
+        let packets = [header];
+        for (let i = 0; i < BLOCK_SIZE; i += 2) {
+            const b1 = currentBlock[i] ^ SHARED_KEY ^ minerId;
+            const b2 = (i+1 < BLOCK_SIZE) ? (currentBlock[i+1] ^ SHARED_KEY ^ minerId) : 0;
+            const word = (b1 << 8) | b2;
+            packets.push(word);
+        }
+        const dataStr = packets.map(p => p.toString(16).padStart(8,'0')).join(' ') + '\n';
+        try {
+            await serialWriter.write(new TextEncoder().encode(dataStr));
+            logMessage(`📤 Sent ${packets.length} packets via serial.`, true);
+        } catch (e) {
+            alert('Serial send error: ' + e.message);
+        }
+    }
+
+    // ----------------------------------------------------------------------
+    // STATS UPDATE
+    // ----------------------------------------------------------------------
+    setInterval(() => {
+        const elapsed = (performance.now() - startTime) / 1000;
+        if (elapsed > 0) {
+            const speed = Math.round(hashCount / elapsed);
+            speedSpan.textContent = speed;
+        }
+        hashCountSpan.textContent = hashCount;
+    }, 500);
+
+    // ----------------------------------------------------------------------
+    // EVENT BINDINGS
+    // ----------------------------------------------------------------------
+    startBtn.addEventListener('click', () => {
+        if (!mining) {
+            miningLoop();
+        }
+    });
+
+    stopBtn.addEventListener('click', stopMining);
+
+    serialConnectBtn.addEventListener('click', async () => {
+        if (serialConnected) {
+            await disconnectSerial();
+        } else {
+            await connectSerial();
+        }
+    });
+
+    serialSendBtn.addEventListener('click', sendLatestBlock);
+
+    clearChainBtn.addEventListener('click', clearChain);
+
+    window.addEventListener('beforeunload', async () => {
+        if (serialConnected) {
+            await disconnectSerial();
+        }
+    });
+
+    // ----------------------------------------------------------------------
+    // INIT
+    // ----------------------------------------------------------------------
+    loadChain();
+    logMessage('🔄 Miner ready. Press "Start Mining".');
+    // Disable serial send initially
+    serialSendBtn.disabled = true;
+</script>
+</body>
+</html>
