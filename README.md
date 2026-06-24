@@ -1,0 +1,1 @@
+# NauTicaMiner
